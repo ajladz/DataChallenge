@@ -1,0 +1,153 @@
+
+# Data Challenge - Detailed Version
+
+```{r, warning = FALSE, message=FALSE }
+unzip('Data_Challenge.zip', exdir = 'Data_Challenge')
+
+setwd('C:/Users/ajla/Documents/GitHub/Data_Challenge')
+
+Sys.setenv(JAVA_HOME="C:\\Program Files\\Java\\jre1.8.0_60")
+library(rJava)
+library(xlsx)
+
+
+```
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(dev="png", 
+               dev.args=list(type="cairo"),
+               dpi=96)
+```
+
+
+Reading the data into R and looking through the first 10 rows of the data set: 
+```{r}
+data <- read.xlsx('Question_2_data.xlsx', sheetIndex = 1, colIndex = c(1:3), header = TRUE)
+head(data, 10)
+```
+
+## 1. Distribution of sightings per year
+
+```{r}
+
+library(ggplot2)
+ggplot(data, aes(x = Year)) + geom_histogram(binwidth = 1, aes(fill = ..count..)) + 
+        labs(title = 'Distribution of Sightings per Year', y = 'Frequency')
+```
+
+Histogram with both density and counts on y-axis:
+
+```{r}
+ggplot(data, aes(x = Year)) + geom_histogram(aes(y = ..density..), binwidth = 1, col = 'red', fill = 'green', alpha = 0.5) + 
+        labs(title = 'Distribution of Sightings per Year', y = 'Density') + geom_density()
+```
+
+## 2.  Correlation between shape and city
+
+```{r}
+levels(data$City)
+levels(data$Shape)
+```
+
+As we can see there are number of misspelled names. In the following chunk I'm going to make a few corrections.
+
+```{r, results='hide'}
+data$Shape <- as.character(data$Shape)
+data$Shape[grep('changed|changing', data$Shape, ignore.case = TRUE)] <- 'Changing'
+data$Shape[grepl('triangle', data$Shape, ignore.case = TRUE)] <- 'Triangle'
+data$Shape[grepl('egg|eggs', data$Shape, ignore.case = TRUE)] <- 'Egg'
+
+levels(as.factor(data$Shape))
+```
+
+```{r}
+data$City <- gsub('Canon city', 'Canon City', as.character(data$City))
+data$City <- gsub('LIttleton', 'Littleton', as.character(data$City))
+
+levels(as.factor(data$City))
+```
+
+```{r}
+data$City <- as.factor(data$City)
+data$Shape <- as.factor(data$Shape)
+```
+
+
+Contingency table/table of counts:
+```{r}
+table <- table(data$City, data$Shape)
+```
+
+### Chi-Square Test of Independence
+
+```{r, message=FALSE, warning=FALSE}
+chisq.test(table)$expected
+```
+
+Many of the expected counts are less than 5 => accuracy of any p-value calculated from the chi-squared
+distribution may be doubtful.
+```{r}
+chisq.test(table)
+```
+
+Alternative: p-value calculated by Monte Carlo simulation
+```{r}
+chisq.test(table, simulate.p.value = TRUE)
+```
+
+**Conclusion**
+
+p-value < 0.05  =>  We would reject the null hypothesis that the shape is indepnendent of the city
+
+### Graphical Representation of Data
+
+Since I'm not sure whether chi-square test of independence is applicable in this case, I'll try and show the relationship between shape and city graphically.
+```{r, fig.width=15, fig.height=15}
+ggplot(data, aes(Shape)) + geom_bar(binwidth = 1, aes(fill = Shape)) + facet_wrap(~City, nrow = 4) + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0, colour ='black')) +
+        labs(title = 'Correlation Between Shape and City', y = 'Frequency')
+```
+
+Percents are more useful than counts for describing how two categorical variables are related and since counts are difficult to interpret, especially with unequal numbers of observations in the rows 
+(and columns):
+```{r, fig.width=15, fig.height=15}
+library(scales)
+ggplot(data, aes(x= Shape, group = City)) + 
+        geom_bar(aes(y = ..density.., fill = factor(..x..))) + 
+        facet_wrap(~City, nrow = 4) +
+        scale_y_continuous(labels=percent) + 
+        theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0, colour ='black')) +
+        labs(title = 'Correlation Between Shape and City', y = 'Density')
+```
+
+**Conclusion**
+
+As we can see from the graph percentages of observations of certain shapes of objects are much higher in certain towns than in others. If variables shape and city were not correlated we would expect to see approximately uniform distribution of percentages of observed shapes. 
+
+
+
+
+###Conditional Percents as Evidence of a Relationship
+
+From <http://sites.stat.psu.edu/~ajw13/stat200_notes/12_assoc/10_assoc_print.htm> :
+Two categorical variables are related in the sample if at least two rows noticeably differ 
+in the pattern of row percents.
+
+```{r}
+row_percents <- prop.table(table, 1)
+row_percents <- as.data.frame.matrix(row_percents)
+sub <- subset(row_percents, select = Changing:Unknown)
+row.names(sub) = NULL
+```
+
+Rows/Cities with percent of observed shapes 5 times average:
+```{r, warning=FALSE, message=FALSE}
+m <- row_percents[apply(sub, MARGIN = 1, function(x) any(x > (rowMeans(row_percents))*5)),] 
+apply(m, 1, max)
+```
+
+**Conclusion**
+
+There are 10 rows/cities that noticeably differ in the pattern of row percents.This can also be seen from the graph of correlation between shape and city. 
+
