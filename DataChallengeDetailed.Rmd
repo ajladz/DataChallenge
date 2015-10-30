@@ -29,7 +29,7 @@ head(data, 10)
 
 ## 1. Distribution of sightings per year
 
-```{r}
+```{r, echo = TRUE}
 
 library(ggplot2)
 ggplot(data, aes(x = Year)) + geom_histogram(binwidth = 1, aes(fill = ..count..)) + 
