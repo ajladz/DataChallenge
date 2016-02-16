@@ -118,7 +118,7 @@ ggplot(data, aes(x= Shape, group = City)) +
 As we can see from the graph percentages of observations of certain shapes of objects are much higher in certain towns than in others. If variables shape and city were not correlated we would expect to see approximately uniform distribution of percentages of observed shapes. 
 
 
-###Conditional Percents as Evidence of a Relationship
+### Conditional Percents as Evidence of a Relationship
 
 Two categorical variables are related in the sample if at least two rows noticeably differ 
 in the pattern of row percents.
